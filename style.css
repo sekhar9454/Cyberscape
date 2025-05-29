@@ -1,0 +1,39 @@
+*{
+    margin: 0;
+    padding: 0;     
+    box-sizing: border-box;
+}
+body{
+    overflow: hidden;
+}
+#canvas1{
+    background-color: black;
+    /* display: none; */
+}
+#canvas2{
+    z-index: 1;
+    /* display: none; */
+}
+canvas{
+    position: absolute;
+}
+#scores{
+    height: 180px;
+    width: 280px;
+    opacity: 60%;
+    background: black;
+    border: 2px solid cyan;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top:10px;
+    left: 10px;
+    color: cyan;
+    padding: 20px;
+    font-size: 25px;
+    box-sizing: border-box;
+    font-family: 'Orbitron Black';
+    font-weight: 100;
+    
+}
