@@ -3,7 +3,7 @@ let cx1 = canvas1.getContext('2d');
 let screem = document.getElementById("container");
 let canvas2 = document.getElementById("canvas2");
 let cx2 = canvas2.getContext('2d'); // for dynamic components
-let max_bullets = 10;
+let max_bullets = 5;
 
 addEventListener("resize", (event) => {
     init();
@@ -12,7 +12,7 @@ addEventListener("resize", (event) => {
 addEventListener('click', () => {
     if (bullets.length < max_bullets) {
         bullets.push(new Bullet());
-        
+        setTimeout(()=>{} , 5000);
     }
 });
 
@@ -25,9 +25,11 @@ let grid_width = screen_width / divisions;
 let green_area_width = grid_width - 2 * padding;
 let Radars = [];
 let green_areas = [];
+ let towerRadius = 5;
 let player;
 let Pause;
 let keyradius = 8;
+ let radarRadius = green_area_width * 0.7;
 let shard_keys = [];
 function init() {
     screen_width = innerWidth;
@@ -86,7 +88,8 @@ function init() {
 
 init();
 blue_area = green_areas[Math.floor(Math.random() * (green_areas.length))];
-let baseStation = new BaseStation(blue_area.x, blue_area.y);
+let baseStation ;
+baseStation = new BaseStation(blue_area.x, blue_area.y);
 baseStation.draw();
 let mouse = {
     x: undefined,
@@ -136,6 +139,14 @@ function Bullet() {
                     }
                 })
             });
+
+            Radars.forEach((r,i)=>{
+                if(distance(r,this) <= towerRadius + this.radius){
+                    Radars.splice(i,1);
+                    index_ = bullets.indexOf(this);
+                    bullets.splice(index_, 1);
+                };
+            })
             this.x += this.vx * step;
             this.y += this.vy * step;
             if (this.bounceCount >= this.maxBounces) {
@@ -157,7 +168,7 @@ function Bullet() {
 function Shard_Key(x,y){
     this.x = x;
     this.y = y;
-
+    this.radius = keyradius;
     this.draw = function () {
         cx2.beginPath();
         cx2.fillStyle = "purple";
@@ -167,7 +178,7 @@ function Shard_Key(x,y){
 }
 
 function spawn_keys(){
-    if(shard_keys.length < 7){
+    if(shard_keys.length < 4){
         let x = Math.random()*innerWidth;
         let y = Math.random()*innerHeight;
         let key = new Shard_Key(x,y);
@@ -209,7 +220,6 @@ function Green_area(x, y) {
 
     };
     this.drawTower = function () {
-        let towerRadius = 5;
         cx2.moveTo(this.x + towerRadius, this.y);
         cx2.arc(x, y, towerRadius, 0, Math.PI * 2);
         cx2.fillStyle = "rgba(0,0,255,0.5)";
@@ -245,7 +255,6 @@ function BaseStation(x, y) {
 
     }
     this.drawTower = function () {
-        let towerRadius = 5;
         cx2.moveTo(this.x + towerRadius * 3.5, this.y);
         cx2.arc(x, y, towerRadius * 3.5, 0, Math.PI * 2);
         cx2.fillStyle = "rgba(0,0,255,1)";
@@ -265,8 +274,8 @@ function Radar(x, y) {
     this.begin_angle = begin_angle;
     cx2.strokeStyle = "red";
     cx2.lineWidth = 2;
-    let radarRadius = green_area_width * 0.7;
-    let towerRadius = 10;
+   
+   
     this.draw = function () {
         cx2.beginPath()
         cx2.strokeStyle = "rgba(255,0,0,0.4)";
@@ -292,10 +301,10 @@ function Radar(x, y) {
 
 
 
-const scoresValues = {
+let scoresValues = {
     Player_health: undefined,
     System_Health: undefined,
-    Keys: undefined,
+    Keys: 0,
     Shards_Delivered: undefined,
     High_Score: undefined
 };
@@ -395,9 +404,12 @@ function Player(x, y) {
         if (this.y > screen_height - this.radius) this.y = screen_height - this.radius;
     }
 }
-
 let lastTime = performance.now();
 
+
+function distance(a,b){
+    return Math.sqrt(Math.pow(a.x -b.x , 2) + Math.pow(a.y-b.y , 2));
+}
 
 function animate() {
     requestAnimationFrame(animate);
@@ -422,8 +434,13 @@ function animate() {
         bullets.forEach(b => b.fire(deltaTime));
     }
     spawn_keys();
-    shard_keys.forEach(k =>{
+    shard_keys.forEach((k,i) =>{
         k.draw();
+        if(distance(k , player) <= player.radius + k.radius) {
+            shard_keys.splice(i,1);
+            scoresValues.Keys++;
+            
+        }
     });
 }
 console.log(shard_keys);
