@@ -3,7 +3,7 @@ let cx1 = canvas1.getContext('2d');
 let screem = document.getElementById("container");
 let canvas2 = document.getElementById("canvas2");
 let cx2 = canvas2.getContext('2d'); // for dynamic components
-let max_bullets = 5;
+let max_bullets = 3;
 
 addEventListener("resize", (event) => {
     init();
@@ -15,7 +15,7 @@ addEventListener('click', () => {
         setTimeout(()=>{} , 5000);
     }
 });
-
+let max_keys = 5;
 let screen_width = innerWidth - 5;
 let screen_height = innerHeight - 50;
 let box_color = '#00FF00';
@@ -27,19 +27,27 @@ let Radars = [];
 let green_areas = [];
  let towerRadius = 5;
 let player;
-let Pause;
+let pause = 0;
 let keyradius = 8;
+let shradradius = 10;
  let radarRadius = green_area_width * 0.7;
 let shard_keys = [];
+let data_shrads = [];
+let shrad_color ={
+    2 : "yellow",
+    4 :"cyan",
+    6 : "green",
+    8 : "black"
+}
+let key_values = [2,4,6,8];
+let startTime = performance.now(); 
 function init() {
     screen_width = innerWidth;
     screen_height = innerHeight - 50;
-    pause = 1;
     Radars = [];
     green_areas = [];
     if (divisions == 9) grid_width = 170.66666666666666;
     else grid_width = screen_width / divisions;
-    console.log(grid_width);
     green_area_width = grid_width - 2 * padding;
     let centers = [];
     canvas1.height = screen_height;
@@ -86,7 +94,7 @@ function init() {
     player.spawn();
 }
 
-init();
+if(pause == 0) init();
 blue_area = green_areas[Math.floor(Math.random() * (green_areas.length))];
 let baseStation ;
 baseStation = new BaseStation(blue_area.x, blue_area.y);
@@ -178,7 +186,7 @@ function Shard_Key(x,y){
 }
 
 function spawn_keys(){
-    if(shard_keys.length < 4){
+    if(shard_keys.length < max_keys){
         let x = Math.random()*innerWidth;
         let y = Math.random()*innerHeight;
         let key = new Shard_Key(x,y);
@@ -187,6 +195,35 @@ function spawn_keys(){
 
 }
 
+// data shrad {2 yellow ,4  cyan ,6 green, 8 black}
+function DataShard(x, y, keys ){
+    this.time = keys*4;
+    this.keys = keys;
+    this.x = x;
+    this.y = y;
+    this.radius = shradradius;
+    this.color = shrad_color[this.keys];
+    this.draw = function(){
+        cx2.save();
+        cx2.beginPath();
+        cx2.fillStyle = this.color;
+        cx2.arc(this.x,this.y,this.radius , 0 , Math.PI*2);
+        cx2.strokeStyle = "black";
+        cx2.stroke();
+        cx2.fill();
+        cx2.closePath();
+        cx2.restore();
+    }
+}
+
+
+function spawn_dataShrad(){
+      if(data_shrads.length < 1) {
+        let keys = key_values[Math.floor(Math.random()*4)];
+        let datashrad = new DataShard(baseStation.x , baseStation.y ,keys );
+        data_shrads.push(datashrad);
+    }
+}
 function Building(x, y, width, height) {
     this.x = x;
     this.y = y;
@@ -257,7 +294,7 @@ function BaseStation(x, y) {
     this.drawTower = function () {
         cx2.moveTo(this.x + towerRadius * 3.5, this.y);
         cx2.arc(x, y, towerRadius * 3.5, 0, Math.PI * 2);
-        cx2.fillStyle = "rgba(0,0,255,1)";
+        cx2.fillStyle = "rgba(255,255,255,1)";
         cx2.fill();
     }
 };
@@ -291,9 +328,42 @@ function Radar(x, y) {
 
     this.update = function (deltaTime) {
         this.begin_angle += this.omega * deltaTime;
-        this.draw();
-    }
 
+        
+        const dist = distance(this, player); 
+        if (dist <= radarRadius + player.radius) {
+        
+            const angleToPlayer = Math.atan2(player.y - this.y, player.x - this.x);
+            
+            let normalizedBeginAngle = this.begin_angle % (Math.PI * 2);
+            let normalizedEndAngle = (this.begin_angle + Math.PI / 3) % (Math.PI * 2);
+            let normalizedPlayerAngle = angleToPlayer % (Math.PI * 2);
+
+            if (normalizedPlayerAngle < 0) normalizedPlayerAngle += Math.PI * 2;
+            if (normalizedBeginAngle < 0) normalizedBeginAngle += Math.PI * 2;
+            if (normalizedEndAngle < 0) normalizedEndAngle += Math.PI * 2;
+
+           
+            let isDetected = false;
+            if (normalizedBeginAngle <= normalizedEndAngle) {
+                isDetected = normalizedPlayerAngle >= normalizedBeginAngle && normalizedPlayerAngle <= normalizedEndAngle;
+            } else {
+                isDetected = normalizedPlayerAngle >= normalizedBeginAngle || normalizedPlayerAngle <= normalizedEndAngle;
+            }
+
+            if (isDetected) {
+                if (scoresValues.Player_health > 0) {
+                    scoresValues.Player_health -= 10 * deltaTime;
+                    if (scoresValues.Player_health < 0){
+                        scoresValues.Player_health = 0;
+                        GameOver();
+                    }
+                    updateScoresDisplay();
+                }
+            }
+        }
+        this.draw();
+    };
 }
 
 
@@ -302,11 +372,11 @@ function Radar(x, y) {
 
 
 let scoresValues = {
-    Player_health: undefined,
-    System_Health: undefined,
+    Player_health: 100,
+    System_Health: 100,
     Keys: 0,
-    Shards_Delivered: undefined,
-    High_Score: undefined
+    Shards_Delivered: 0,
+    Highest_Score: parseInt(localStorage.getItem('highScore')) || 0
 };
 
 
@@ -315,7 +385,7 @@ const scoreLabels = {
     System_Health: "System Health",
     Keys: "Keys",
     Shards_Delivered: "Shards Delivered",
-    High_Score: "High Score"
+    Highest_Score: "Highest Score"
 };
 
 
@@ -328,15 +398,29 @@ const fragment = document.createDocumentFragment();
 
 Object.keys(scoreLabels).forEach(key => {
     const p = document.createElement("p");
+    p.setAttribute("id" , key);
     const value = scoresValues[key] ?? "Not set";
     p.textContent = `${scoreLabels[key]}: ${value}`;
     fragment.appendChild(p);
 });
+const pause_button = document.createElement("button");
+pause_button.setAttribute("id" , "pause_button");
+pause_button.textContent = "Pause";
+pause_button.addEventListener("click" , ()=>{pause_screen();console.log("h")});
+fragment.appendChild(pause_button);
 
 scores.appendChild(fragment);
 container.appendChild(scores);
 
-
+function updateScoresDisplay() {
+    Object.keys(scoreLabels).forEach(key => {
+        const p = document.getElementById(key);
+        if (p) {
+            const value = scoresValues[key] !== undefined ? Math.round(scoresValues[key]) : "Not set";
+            p.textContent = `${scoreLabels[key]}: ${value}`;
+        }
+    });
+}
 const keys = {
     ArrowUp: false,
     ArrowDown: false,
@@ -410,10 +494,20 @@ let lastTime = performance.now();
 function distance(a,b){
     return Math.sqrt(Math.pow(a.x -b.x , 2) + Math.pow(a.y-b.y , 2));
 }
-
+setInterval(()=>{
+    if(!pause){
+        if(scoresValues.System_Health>0){
+            scoresValues.System_Health--; 
+        }else{
+            GameOver();
+        }
+        updateScoresDisplay(); 
+    }
+}, 1000);
+spawn_dataShrad();
 function animate() {
     requestAnimationFrame(animate);
-    if (pause == 1) {
+    if (!pause) {
         const currentTime = performance.now();
         const deltaTime = (currentTime - lastTime) / 1000;
         lastTime = currentTime;
@@ -433,15 +527,145 @@ function animate() {
         player.spawn();
         bullets.forEach(b => b.fire(deltaTime));
     }
+   
+    data_shrads.forEach((d,i) =>{
+        d.draw();
+        if(distance(d,player) <= shradradius + player.radius && scoresValues.Keys >= d.keys){
+            scoresValues.Keys -= d.keys;
+            scoresValues.Shards_Delivered++;
+            scoresValues.System_Health+=d.keys*4;
+            if(scoresValues.System_Health>100) scoresValues.System_Health =100;
+            updateScoresDisplay();
+            data_shrads.splice(i,1);
+            console.log("Add timing to the Server!!");
+            setTimeout(()=>spawn_dataShrad() , 10000);
+        }
+        
+    })
     spawn_keys();
     shard_keys.forEach((k,i) =>{
         k.draw();
         if(distance(k , player) <= player.radius + k.radius) {
             shard_keys.splice(i,1);
             scoresValues.Keys++;
+            updateScoresDisplay();
             
         }
     });
 }
-console.log(shard_keys);
+
 animate();
+
+
+
+// Game over function
+function GameOver() {
+    pause = 1; 
+
+    
+    const survivalTime = Math.round((performance.now() - startTime) / 1000);
+
+    let highScore = parseInt(localStorage.getItem('highScore')) || 0;
+  
+  
+    if (survivalTime > highScore) {
+        localStorage.setItem('highScore', survivalTime);
+        highScore = survivalTime; 
+        console.log(`New high score: ${highScore}`);
+    }
+   
+    const gameOverScreen = document.createElement("div");
+    gameOverScreen.id = "gameOverScreen";
+    gameOverScreen.className = "game-over-screen";
+
+ 
+    const gameOverText = document.createElement("div");
+    gameOverText.textContent = "Game Over!";
+    gameOverScreen.appendChild(gameOverText);
+
+    
+    const scoreText = document.createElement("div");
+    scoreText.textContent = `Survival Time: ${survivalTime} seconds`;
+    gameOverScreen.appendChild(scoreText);
+
+ 
+    const restartButton = document.createElement("button");
+    restartButton.textContent = "Restart";
+    restartButton.className = "game-over-button restart";
+    restartButton.addEventListener("click", () => {
+        gameOverScreen.remove();
+
+        scoresValues.Player_health = 100;
+        scoresValues.System_Health = 100;
+        scoresValues.Keys = 0;
+        scoresValues.Shards_Delivered = 0;
+        scoresValues.High_Score = Math.max(scoresValues.High_Score, survivalTime);
+        bullets = [];
+        shard_keys = [];
+        data_shrads = [];
+        updateScoresDisplay();
+        init();
+        pause = 0;
+        lastTime = performance.now();
+        animate();
+    });
+    gameOverScreen.appendChild(restartButton);
+
+    container.appendChild(gameOverScreen);
+}
+
+
+
+
+function pause_screen() {
+  
+    if (pause === 1) return;
+
+    pause = 1; 
+
+    
+    const pauseScreen = document.createElement("div");
+    pauseScreen.id = "pauseScreen";
+    pauseScreen.className = "pause-screen";
+
+ 
+    const pauseText = document.createElement("div");
+    pauseText.textContent = "Paused";
+    pauseScreen.appendChild(pauseText);
+
+   
+    const resumeButton = document.createElement("button");
+    resumeButton.textContent = "Resume";
+    resumeButton.className = "pause-button resume";
+    resumeButton.addEventListener("click", () => {
+        pause = 0; 
+        pauseScreen.remove(); 
+        lastTime = performance.now();  
+        animate(); 
+    });
+    pauseScreen.appendChild(resumeButton);
+
+   
+    const restartButton = document.createElement("button");
+    restartButton.textContent = "Restart";
+    restartButton.className = "pause-button restart";
+    restartButton.addEventListener("click", () => {
+        pauseScreen.remove();
+        scoresValues.Player_health = 100;
+        scoresValues.System_Health = 100;
+        scoresValues.Keys = 0;
+        scoresValues.Shards_Delivered = 0;
+        scoresValues.High_Score = Math.max(scoresValues.High_Score, scoresValues.Shards_Delivered);
+        bullets = [];
+        shard_keys = [];
+        data_shrads = [];
+        updateScoresDisplay();
+        init();
+        pause = 0;
+        lastTime = performance.now();
+        animate();
+    });
+    pauseScreen.appendChild(restartButton);
+
+    container.appendChild(pauseScreen);
+}
