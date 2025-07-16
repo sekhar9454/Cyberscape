@@ -283,7 +283,6 @@ function BaseStation(x, y) {
         let width = Math.random() < 0.5 ? -1 * (30 + Math.random() * 20) : (30 + Math.random() * 20);
         let building = new Building(this.x + height / 6, this.y + width / 6, width, height);
         this.buildings.push(building);
-        // building.draw();
     }
     this.draw = function () {
         cx1.fillStyle = "#00FFFF";
@@ -599,7 +598,7 @@ function GameOver() {
         scoresValues.System_Health = 100;
         scoresValues.Keys = 0;
         scoresValues.Shards_Delivered = 0;
-        scoresValues.High_Score = Math.max(scoresValues.High_Score, survivalTime);
+        scoresValues.Highest_Score = Math.max(scoresValues.Highest_Score, survivalTime);
         bullets = [];
         shard_keys = [];
         data_shrads = [];
@@ -655,7 +654,7 @@ function pause_screen() {
         scoresValues.System_Health = 100;
         scoresValues.Keys = 0;
         scoresValues.Shards_Delivered = 0;
-        scoresValues.High_Score = Math.max(scoresValues.High_Score, scoresValues.Shards_Delivered);
+        scoresValues.Highest_Score = Math.max(scoresValues.Highest_Score, 0);
         bullets = [];
         shard_keys = [];
         data_shrads = [];
